@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TIME RUSH — игра на дефицит времени (30 секунд)</title>
+<style>
+  body {margin:0; background:#0c1021; color:#e3e8ff; font-family:Arial; display:flex; flex-direction:column; align-items:center;}
+  h1 {margin-top:20px; font-size:20px;}
+  #game {border:5px solid #1f2a44; border-radius:8px; margin-top:15px;}
+  canvas {background:#0a0f1b; display:block;}
+  .info {margin-top:10px; font-size:14px; color:#9bb0d8;}
+  button {margin-top:12px; padding:8px 12px; background:#1f6feb; border:0; border-radius:6px; color:white; cursor:pointer; font-size:14px;}
+  button:active {transform:translateY(1px);}
+</style>
+</head>
+<body>
+
+<h1>TIME RUSH — выживи 30 секунд</h1>
+<canvas id="game" width="420" height="420"></canvas>
+<div class="info">Управление: стрелки или WASD. Цель — продержаться <b>30 секунд</b>.</div>
+<button id="startBtn">Старт</button>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let player, enemies, timeLeft, running, lastSpawn, difficulty;
+
+function resetGame() {
+  player = {x:210, y:210, size:12, speed:3};
+  enemies = [];
+  timeLeft = 30;
+  lastSpawn = 0;
+  difficulty = 1;
+  running = true;
+}
+
+document.getElementById("startBtn").onclick = () => {
+  resetGame();
+  loop(0);
+};
+
+let keys = {};
+document.addEventListener("keydown", e => keys[e.key]=true);
+document.addEventListener("keyup", e => keys[e.key]=false);
+
+function spawnEnemy() {
+  // Случайный край
+  const edge = Math.floor(Math.random()*4);
+  let x,y;
+  if(edge===0){x=Math.random()*420; y=-20;}
+  if(edge===1){x=440; y=Math.random()*420;}
+  if(edge===2){x=Math.random()*420; y=440;}
+  if(edge===3){x=-20; y=Math.random()*420;}
+
+  const speed = 1.2 + Math.random()*difficulty;
+  enemies.push({x,y,speed});
+}
+
+function movePlayer() {
+  if(keys["ArrowUp"]||keys["w"]) player.y -= player.speed;
+  if(keys["ArrowDown"]||keys["s"]) player.y += player.speed;
+  if(keys["ArrowLeft"]||keys["a"]) player.x -= player.speed;
+  if(keys["ArrowRight"]||keys["d"]) player.x += player.speed;
+
+  player.x = Math.min(414, Math.max(6, player.x));
+  player.y = Math.min(414, Math.max(6, player.y));
+}
+
+function moveEnemies() {
+  enemies.forEach(e => {
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const len = Math.hypot(dx,dy);
+    e.x += (dx/len)*e.speed;
+    e.y += (dy/len)*e.speed;
+  });
+}
+
+function checkCollision() {
+  for(const e of enemies){
+    if(Math.hypot(player.x-e.x, player.y-e.y) < player.size+6){
+      running = false;
+      gameOver();
+    }
+  }
+}
+
+function drawGame() {
+  ctx.fillStyle = "#0a0f1b";
+  ctx.fillRect(0,0,420,420);
+
+  // игрок
+  ctx.fillStyle="#7be495";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
+  ctx.fill();
+
+  // враги
+  ctx.fillStyle="#ff6b6b";
+  enemies.forEach(e => {
+    ctx.beginPath();
+    ctx.arc(e.x,e.y,8,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // таймер
+  ctx.fillStyle="#e3e8ff";
+  ctx.font="18px Arial";
+  ctx.fillText("Время: " + timeLeft.toFixed(1), 10, 25);
+}
+
+function gameOver() {
+  ctx.fillStyle="rgba(0,0,0,0.6)";
+  ctx.fillRect(0,0,420,420);
+  ctx.fillStyle="#ffd6a5";
+  ctx.font="22px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("Конец игры!",210,190);
+  ctx.fillText("Вы прожили: " + (30-timeLeft).toFixed(1) + " сек",210,225);
+  ctx.fillText("Нажмите Старт",210,260);
+}
+
+function loop(timestamp) {
+  if(!running) return;
+
+  const delta = 16;
+
+  lastSpawn += delta;
+  if(lastSpawn > 500 - difficulty*40){
+    spawnEnemy();
+    lastSpawn = 0;
+  }
+
+  timeLeft -= delta/1000;
+  if(timeLeft <= 0){
+    running = false;
+    win();
+    return;
+  }
+
+  difficulty += 0.001;
+
+  movePlayer();
+  moveEnemies();
+  checkCollision();
+  drawGame();
+
+  requestAnimationFrame(loop);
+}
+
+function win() {
+  ctx.fillStyle="rgba(0,0,0,0.6)";
+  ctx.fillRect(0,0,420,420);
+  ctx.fillStyle="#a5ffd6";
+  ctx.font="22px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("Вы выжили 30 секунд!",210,190);
+  ctx.fillText("Поздравляем!",210,230);
+}
+</script>
+
+</body>
+</html>
